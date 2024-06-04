@@ -1,6 +1,6 @@
 from RobotObject import Robot
 from SensorObject import Sensor
-import time
+
 mi_robot = Robot()
 
 ## TODO: poner todo en carpetas
@@ -52,20 +52,17 @@ mi_robot.set_sensors(sensores)
 mi_robot.start_sensor_log()
 
 mi_robot.send_command("RX_MOV_SERVO",[90])
-time.sleep(0.5)
 
 mi_robot.send_command("RX_MS_SENSOR_ULTRA_SONIDO",[1])
-time.sleep(0.5)
+
 mi_robot.send_command("RX_MS_SENSOR_OPTICO",[1])
 #mi_robot.send_command("RX_MS_SENSOR_ULTRA_SONIDO_ONETIME")
 
-time.sleep(0.5)
 while True:
-    time.sleep(0.5)
+
     if ultra_sonido.queue_state() >0:
         print(f"US: {ultra_sonido.queue_pop()}")
     if optico.queue_state() >0:
         print(f"IR:{optico.queue_pop()}")    
-
 
 mi_robot.disconnect()

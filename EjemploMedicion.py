@@ -1,6 +1,5 @@
 from RobotObject import Robot
 from SensorObject import Sensor
-import time
 import matplotlib.pyplot as plt
 
 mi_robot = Robot()
@@ -27,7 +26,6 @@ mi_robot.set_commands(comandos=comando)
 ultra_sonido = Sensor()
 optico = Sensor()
 
-
 sensores = {
     "SENUSD" : ultra_sonido,
     "SENOPD" : optico,
@@ -39,21 +37,17 @@ mi_robot.set_sensors(sensores)
 mi_robot.start_sensor_log()
 
 angle_vect = []
-for angle in range(0,90,5):
+for angle in range(0,180,5):
 
     angle_vect.append(angle)
     # Cambio la posicion del servo
     mi_robot.send_command("RX_MOV_SERVO",[angle]) 
 
-    time.sleep(0.2)
     # Pido medicion de sensor ultrasonido    
     mi_robot.send_command("RX_MS_SENSOR_ULTRA_SONIDO_ONETIME")
 
-    time.sleep(0.2)
     # Pido medicion de sensor optico 
     mi_robot.send_command("RX_MS_SENSOR_OPTICO_ONETIME")
-
-    time.sleep(0.2)
 
 
 

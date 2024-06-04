@@ -1,6 +1,5 @@
 from RobotObject import Robot
 from SensorObject import Sensor
-import time
 import matplotlib.pyplot as plt
 import FuncionesSensores
 
@@ -40,23 +39,22 @@ mi_robot.set_sensors(sensores)
 mi_robot.start_sensor_log()
 
 # Cambio la posicion del servo
-mi_robot.send_command("RX_MOV_SERVO",[0])
+mi_robot.send_command("RX_MOV_SERVO",[90])
 
+num_med = []
 
 for i in range(50):
 
-    time.sleep(0.2)
+    num_med.append(i)
+
     # Pido medicion de sensor ultrasonido    
     mi_robot.send_command("RX_MS_SENSOR_ULTRA_SONIDO_ONETIME")
 
-    time.sleep(0.2)
     # Pido medicion de sensor optico 
     mi_robot.send_command("RX_MS_SENSOR_OPTICO_ONETIME")
 
     print(f"medicion {i}")
 
-
-num_med = range(50)
 
 # Creación de los gráficos
 plt.figure(figsize=(10, 5))

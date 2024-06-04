@@ -40,17 +40,17 @@ mi_robot.set_sensors(sensores)
 mi_robot.start_sensor_log()
 
 # Cambio la posicion del servo
-mi_robot.send_command("RX_MOV_SERVO",[0]) 
+mi_robot.send_command("RX_MOV_SERVO",[90]) 
 
 num_mediciones = 30
 
+n_med = []
 for i in range(num_mediciones):
+    n_med.append(i)
 
-    time.sleep(0.2)
     # Pido medicion de sensor ultrasonido    
     mi_robot.send_command("RX_MS_SENSOR_ULTRA_SONIDO_ONETIME")
 
-    time.sleep(0.2)
     # Pido medicion de sensor optico 
     mi_robot.send_command("RX_MS_SENSOR_OPTICO_ONETIME")
 
@@ -62,7 +62,7 @@ plt.figure(figsize=(10, 5))
 
 # Gráfico para sensor ultrasonido
 plt.subplot(1, 2, 1)
-plt.plot(range(num_mediciones),ultra_sonido.get_values(), marker='o', color='b')
+plt.plot(n_med,ultra_sonido.get_values(), marker='o', color='b')
 plt.title('Medición Sensor Ultrasonido')
 plt.xlabel('Medicion N°')
 plt.ylabel('Distancia (mm)')
@@ -70,7 +70,7 @@ plt.grid(True)
 
 # Gráfico para sensor óptico
 plt.subplot(1, 2, 2)
-plt.plot(range(num_mediciones),optico.get_values(), marker='s', color='r')  
+plt.plot(n_med,optico.get_values(), marker='s', color='r')  
 plt.title('Medición Sensor Óptico')
 plt.xlabel('Medicion N°')
 plt.ylabel('Distancia (mm)')
@@ -91,11 +91,9 @@ optico.queue_clear()
 
 for i in range(num_mediciones):
 
-    time.sleep(0.2)
     # Pido medicion de sensor ultrasonido    
     mi_robot.send_command("RX_MS_SENSOR_ULTRA_SONIDO_ONETIME")
 
-    time.sleep(0.2)
     # Pido medicion de sensor optico 
     mi_robot.send_command("RX_MS_SENSOR_OPTICO_ONETIME")
 

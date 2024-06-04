@@ -3,6 +3,7 @@ import serial
 import SensorObject 
 import threading
 import re
+import time
 
 class Robot:
     """Objeto dedicado a la interaccion con el sistema "Robot"
@@ -24,6 +25,9 @@ class Robot:
         ## Seteo por defecto el verbose
         self.verbose = False
 
+        ## Tiempo de demora entre comandos por default y tiempo actual
+        self._command_interval = 200 / 1000 # 200ms
+        self._last_command_time = time.time()
 
     ## Funciones conexion serie
 
@@ -121,13 +125,18 @@ class Robot:
         return self._comandos
     
     def send_command(self, comando: str, data: list[int] = []):
-        """ Envía la trama asociada al comando por el puerto serie.
+        """ Envía la trama asociada al comando por el puerto serie.\n
+        Nota: Entre comandos se requiere un tiempo minimo, en caso de que no haya transcurrido \n
+        ese tiempo esta funcion se bloquea y espera a que se cumpla el tiempo entre comandos.
+        El tiempo entre comandos esta determinado por el metodo Set_interval().
 
         Args:
             comando (str): comando a enviar
             data (list[int]): parametros que se quieren enviar en el comando (0 a 255)
 
-        """    
+        """   
+        # Control de errores
+         
         if not self.serial_connection or not self.serial_connection.is_open:
             self.print_verbose("Error: No está conectado al puerto serie.")
             return
@@ -135,19 +144,49 @@ class Robot:
         if comando not in self._comandos:
             self.print_verbose(f"Error: Comando '{comando}' no está definido.")
             return
+        
+        #Armo la trama
         trama = "$"
         trama += self._comandos[comando] ## Agarro la trama correspondiente.
+        
+        # Detecto si hay argumentos para enviar y los concateno
         if len(data) > 0:
-            trama += "-"
+            trama += "-" 
+
         for this_data in data:
-            try:
-                trama += str(this_data)
-            except ValueError as e:
-                raise ValueError("El valor de argumento no es valido debe ser entre 0 y 255")
-                return
+            trama += str(this_data)
+            
         trama += "#"
+
+        # Chequeo que haya pasado el tiempo minimo entre comandos
+        current_time = time.time()
+        time_since_last_command = current_time - self._last_command_time
+
+        # Si todavia no termino la espera bloqueo la funcion hasta que se cumpla el tiempo
+        if time_since_last_command < self._command_interval:
+            wait_time = self._command_interval - time_since_last_command
+            self.print_verbose(f"Esperando {wait_time:.2f} segundos para enviar el próximo comando.")
+            time.sleep(wait_time)
+
+        # Envio la trama por serie
         self._write_data(trama)
+
+        # Actualizo el tiempo del ultimo comando enviado
+        self._last_command_time = time.time()
+
         self.print_verbose(f"Comando '{comando}' enviado: {trama}")
+        
+
+    def Set_interval(self, interval):
+        """" Funcion que permite cambiar el tiempo de demora entre comandos.
+        El tiempo maximo que se puede asignar son 2 Seg
+        Args:
+            interval (_type_): tiempo entre comandos en mS
+        """        
+        if interval<2000:
+            self._command_interval = interval / 1000
+        else:
+            self.print_verbose("Valor maximo de intervalo 2000mS")
 
     #######################################################################
     ## Configuracion de un sensor
