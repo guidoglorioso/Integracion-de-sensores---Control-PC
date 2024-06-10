@@ -1,40 +1,9 @@
-from RobotObject import Robot
+from MedidorRobotObjetc import MedidorRobot
 from SensorObject import Sensor
 import matplotlib.pyplot as plt
 
-mi_robot = Robot()
-mi_robot.connect(puerto="COM5")
+mi_robot = MedidorRobot(_puerto= "COM5")
 
-# Defino comandos con su identificador
-comando = {
-    "RX_MS_SENSOR_ULTRA_SONIDO_ONETIME" : "SENUS1",
-    "RX_MS_SENSOR_OPTICO_ONETIME" : "SENOP1",
-    "RX_MOV_SERVO" : "MOV1",
-    "RX_RECORRIDO_SERVO" : "MOVR",
-    "RX_MS_SENSOR_ULTRA_SONIDO" : "SENUS",
-    "RX_MS_SENSOR_OPTICO" : "SENOP",
-    "RX_MS_SENSOR_ACELEROMETRO" : "SENAC",
-    "RX_MS_SENSOR_GIROSCOPO" : "SENGI",
-    "RX_RECORRIDO_SERVO" : "MOVR",
-
-}
-
-# Asigno los comandos al objeto robot
-mi_robot.set_commands(comandos=comando)
-
-# Defino sensores y los asigno al objeto robot
-ultra_sonido = Sensor()
-optico = Sensor()
-
-sensores = {
-    "SENUSD" : ultra_sonido,
-    "SENOPD" : optico,
-}
-
-mi_robot.set_sensors(sensores)
-
-# Inicializo la adquisicion de datos de sensores a los objetos "Sensor"
-mi_robot.start_sensor_log()
 
 angle_vect = []
 for angle in range(0,180,5):
@@ -56,7 +25,8 @@ plt.figure(figsize=(10, 5))
 
 # Gráfico para sensor ultrasonido
 plt.subplot(1, 2, 1)
-plt.plot(angle_vect,ultra_sonido.get_values(), marker='o', color='b')
+sensor_us = mi_robot.get_sensor_ultrasonido()
+plt.plot(angle_vect,sensor_us.get_values(), marker='o', color='b')
 plt.title('Medición Sensor Ultrasonido')
 plt.xlabel('Ángulo (grados)')
 plt.ylabel('Distancia (mm)')
@@ -64,7 +34,8 @@ plt.grid(True)
 
 # Gráfico para sensor óptico
 plt.subplot(1, 2, 2)
-plt.plot(angle_vect,optico.get_values(), marker='s', color='r')  
+sensor_opt = mi_robot.get_sensor_optico()
+plt.plot(angle_vect,sensor_opt.get_values(), marker='s', color='r')  
 plt.title('Medición Sensor Óptico')
 plt.xlabel('Ángulo (grados)')
 plt.ylabel('Distancia (mm)')

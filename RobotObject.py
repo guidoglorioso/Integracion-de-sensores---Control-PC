@@ -274,6 +274,9 @@ class Robot:
         """        
         self._flag_thread_sensor = True
         while self._flag_thread_sensor: ## Es un proceso corriendo
+            if self.serial_connection == False:
+                self.print_verbose(f"No se inicio la comunicacion serie correctamente")
+                return
             if self.serial_connection.in_waiting > 0:
                 dato_recibido = self._read_data()
                 self.Function_recept(dato_recibido)
