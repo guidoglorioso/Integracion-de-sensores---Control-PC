@@ -11,6 +11,7 @@ class Sensor:
         self._queue = deque(maxlen=N)
         
         self._ErrortipoA = 0
+        self._var = 0
         self._time_start_plot = time.time()
 
     def queue_dim(self, dim):
@@ -39,11 +40,33 @@ class Sensor:
     def queue_pop(self):
         return self._queue.pop()
     
-    def get_values(self):
-    # Convertimos la deque a una lista para obtener todos sus valores
+    def get_values(self,last_time = None):
+        """_summary_
+
+        Args:
+            last_time (time.time, optional): Permite obtener los valores que hayan sido adquiridos mas luego de ese momento. Defaults to None.
+
+        Returns:
+            _type_: vector de valores medidos
+        """  
+        # Convertimos la deque a una lista para obtener todos sus valores
+        if last_time != None:
+                return [(valor[0]  - self._ErrortipoA) for valor in list(self._queue) if valor[1] > last_time]
+   
         return [(valor[0]  - self._ErrortipoA) for valor in list(self._queue)]
     
-    def get_values_time(self):
+    def get_values_time(self,last_time = None):
+        """_summary_
+
+        Args:
+            last_time (time.time, optional): Permite obtener los valores que hayan sido adquiridos mas luego de ese momento. Defaults to None.
+
+        Returns:
+            _type_: vector de valores medidos con sus tiempos
+        """  
+        if last_time != None:
+            return [[(valor[0]  - self._ErrortipoA),valor[1]] for valor in list(self._queue) if valor[1] > last_time]
+   
     # Convertimos la deque a una lista para obtener todos sus valores y sus tiempos
         return [[(valor[0]  - self._ErrortipoA),valor[1]] for valor in list(self._queue)]
     
@@ -86,6 +109,20 @@ class Sensor:
     def GetMean(self):
         return np.mean(self.get_values())
     
+    def Calculate_Var(self):
+        """Calcula la varianza de las muestras
+
+        Returns:
+            _type_: devuelve el valor de la varianza medida
+        """        
+        return np.std(self.get_values())
+    
+    def Get_var(self):
+        return self._var
+    
+    def Set_var(self,var):
+        self._var = var
+
     ## Metodos para plotear en tiempo real los datos del sensor
 
     def start_time(self):

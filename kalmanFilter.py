@@ -1,107 +1,55 @@
-from RobotObject import Robot
-from SensorObject import Sensor
+from MedidorRobotObjetc import MedidorRobot
 from FuncionesSensores import *
 import matplotlib.pyplot as plt
 import numpy as np
 
-mi_robot = Robot()
-mi_robot.connect(puerto="COM5")
-
-# Defino comandos con su identificador
-comando = {
-    "RX_MS_SENSOR_ULTRA_SONIDO_ONETIME" : "SENUS1",
-    "RX_MS_SENSOR_OPTICO_ONETIME" : "SENOP1",
-    "RX_MOV_SERVO" : "MOV1",
-    "RX_RECORRIDO_SERVO" : "MOVR",
-    "RX_MS_SENSOR_ULTRA_SONIDO" : "SENUS",
-    "RX_MS_SENSOR_OPTICO" : "SENOP",
-    "RX_MS_SENSOR_ACELEROMETRO" : "SENAC",
-    "RX_MS_SENSOR_GIROSCOPO" : "SENGI",
-    "RX_RECORRIDO_SERVO" : "MOVR",
-
-}
-
-# Asigno los comandos al objeto robot
-mi_robot.set_commands(comandos=comando)
-
-# Defino sensores y los asigno al objeto robot
-ultra_sonido = Sensor()
-optico = Sensor()
-
-sensores = {
-    "SENUSD" : ultra_sonido,
-    "SENOPD" : optico,
-}
-
-mi_robot.set_sensors(sensores)
-
-# Inicializo la adquisicion de datos de sensores a los objetos "Sensor"
-mi_robot.start_sensor_log()
+mi_robot = MedidorRobot(_puerto = "COM5")
 
 ### Inicia rutina 
 mi_robot.send_command("RX_MOV_SERVO",[90]) 
 # Definir matrices del filtro de Kalman
 
-kf = crear_filtro_kalman([optico,ultra_sonido],"FILTER_DISTANCE_TWO_SENSOR")
+# Definir las matrices A, H, P, Q, R
+A = np.array([[1]])
+H = np.array([[1], [1]])
+P = np.array([[1]])
+Q = np.array([[0.01]])
+R = np.array([[0.1, 0], [0, 0.1]])
 
-for i in range(50):
+# Inicializar el objeto filtro de Kalman
+kf = kalman_filter()
+kf.attach_sensors(mi_robot.ultra_sonido,mi_robot.optico)
+kf.init_filter(A, H, P, Q,R)
 
-    # Pido medicion de sensor ultrasonido    
-    mi_robot.send_command("RX_MS_SENSOR_ULTRA_SONIDO_ONETIME")
+mi_robot.send_command("RX_MS_SENSOR_ULTRA_SONIDO",[1])
+mi_robot.send_command("RX_MS_SENSOR_OPTICO",[1])
 
-    # Pido medicion de sensor optico 
-    mi_robot.send_command("RX_MS_SENSOR_OPTICO_ONETIME")
+# Crear la figura y los ejes para los subplots
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 6))  # 1 fila, 2 columnas
 
-    # Calculo por kalman
-    
-    actualizar_filtro_kalman(kf,ultra_sonido.queue_pop())
+# Resteo los tiempos de ambos sensores
+mi_robot.ultra_sonido.start_time()
+mi_robot.optico.start_time()
+kf.start_time()
 
-    print(f"medicion {i}")
+# iniciar las animaciones para cada sensor
+ani1 = mi_robot.ultra_sonido.add_plot_raw(fig, ax1)
+ani2 = mi_robot.optico.add_plot_raw(fig, ax2)
 
-mediciones_ultrasonido = ultra_sonido.get_values()
-mediciones_optico = optico.get_values()
+# Agrego un grafico de datos procesados.
+ani3 = kf.add_plot_kalman(fig, ax3)
 
+ax1.set_title("Medicion Ultrasonido")
+ax2.set_title("Medicion sensor optico")
+ax3.set_title("Medicion Kalman Filter")
 
-num_med = range(len(mediciones_ultrasonido))
-# Creación de los gráficos
-plt.figure(figsize=(10, 5))
-
-# Gráfico para sensor ultrasonido
-plt.subplot(1, 3, 1)
-plt.plot(num_med,mediciones_ultrasonido, marker='o', color='b')
-plt.title('Medición Sensor Ultrasonido')
-plt.xlabel('Medicion N°')
-plt.ylabel('Distancia (mm)')
-plt.grid(True)
-
-# Gráfico para sensor óptico
-plt.subplot(1, 3, 2)
-num_med = range(len(mediciones_optico))
-plt.plot(num_med,mediciones_optico, marker='s', color='r')  
-plt.title('Medición Sensor Óptico')
-plt.xlabel('Medicion N°')
-plt.ylabel('Distancia (mm)')
-plt.grid(True)
-num_med = range(len(valores_kalman))
-# Gráfico para sensor óptico
-plt.subplot(1, 3, 3)
-plt.plot(num_med,valores_kalman, marker='s', color='r')  
-plt.title('Estimacion Kalman')
-plt.xlabel('Medicion N°')
-plt.ylabel('Distancia (mm)')
-plt.grid(True)
-
-# Ajustar el diseño
+# Ajustar el layout para que no haya solapamiento
 plt.tight_layout()
 
-# Mostrar los gráficos
+# Mostrar la figura
 plt.show()
 
-### Termina rutina
-
 mi_robot.disconnect()
-
-##############
 
 
 

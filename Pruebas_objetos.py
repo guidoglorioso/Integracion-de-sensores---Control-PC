@@ -1,33 +1,63 @@
-## En este script voy a plotear en tiempo real lo que se recibe.
-
 from MedidorRobotObjetc import MedidorRobot
 from SensorObject import Sensor
 import matplotlib.pyplot as plt
-
+import FuncionesSensores
+import matplotlib.animation as animation
 
 mi_robot = MedidorRobot(_puerto="COM5")
 
-mi_robot.send_command("RX_MS_SENSOR_ULTRA_SONIDO",[1])
-mi_robot.send_command("RX_MS_SENSOR_OPTICO",[1])
+# Cambio la posicion del servo
+mi_robot.send_command("RX_MOV_SERVO",[90])
 
-# Crear la figura y los ejes para los subplots
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))  # 1 fila, 2 columnas
+num_med = []
 
-# Iniciar las animaciones para cada sensor
-ani1 = mi_robot.ultra_sonido.start_plot(fig, ax1)
-ani2 = mi_robot.optico.start_plot(fig, ax2)
-ax1.set_title("Medicion Ultrasonido")
-ax2.set_title("Medicion sensor optico")
-# Ajustar el layout para que no haya solapamiento
+
+for i in range(100):
+
+    num_med.append(i)
+
+    # Pido medicion de sensor ultrasonido    
+    mi_robot.send_command("RX_MS_SENSOR_ULTRA_SONIDO_ONETIME")
+
+    # Pido medicion de sensor optico 
+    mi_robot.send_command("RX_MS_SENSOR_OPTICO_ONETIME")
+
+   
+    print(f"medicion {i}")
+
+sensor_us = mi_robot.get_sensor_ultrasonido()
+sensor_opt = mi_robot.get_sensor_optico()
+
+print(f"La varianza del sensor Opt es {sensor_opt.GetVar()}")
+print(f"La varianza del sensor us es {sensor_us.GetVar()}")
+
+# Creación de los gráficos
+plt.figure(figsize=(10, 5))
+
+# Gráfico para sensor ultrasonido
+plt.subplot(1, 2, 1)
+
+
+plt.plot(num_med,sensor_us.get_values(), marker='o', color='b')
+plt.title('Medición Sensor Ultrasonido')
+plt.xlabel('Medicion N°')
+plt.ylabel('Distancia (mm)')
+plt.grid(True)
+
+# Gráfico para sensor óptico
+plt.subplot(1, 2, 2)
+
+plt.plot(num_med,sensor_opt.get_values(), marker='s', color='r')  
+plt.title('Medición Sensor Óptico')
+plt.xlabel('Medicion N°')
+plt.ylabel('Distancia (mm)')
+plt.grid(True)
+
+# Ajustar el diseño
 plt.tight_layout()
 
-# Mostrar la figura
+# Mostrar los gráficos
 plt.show()
 
-#TODO hay que ver el tema de si grafico en funcion del tiempo debo guardar el tiempo de cada muestra
-#TODO actualizar como lo hago ahora no es recomendable porque es lento, tengo que agarrar todos los datos
-#de la queue y plotearlos cada vez que entro
-#TODO podria crear otra queue para que de esta forma una se dedique al ploteo y otra al procesamiento.
-
-
 mi_robot.disconnect()
+

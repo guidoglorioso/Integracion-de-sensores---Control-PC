@@ -33,6 +33,8 @@ class MedidorRobot(Robot):
         self.start_sensor_log()
 
         ## Variables propias del proyecto
+        self.ultra_sonido.Set_var(3.392639090737473)
+        self.optico.Set_var(9.341605062534653)
         # Aca se ponen parametros especificos del proyecto, por ejemplo valores de calibracion
         # U otras caracteristicas propias.
 
