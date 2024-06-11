@@ -14,88 +14,95 @@ def calibracion_sensores(Sensores : list[Sensor]):
     """ 
     medias = []  
     for this_sensor in Sensores:
-        medias.append(this_sensor.GetMean())
+        medias.append(this_sensor.get_mean())
 
     media_total = np.mean(medias)
     for this_sensor,media in zip(Sensores,medias):
-        this_sensor.setCalibracion(media - media_total)
+        this_sensor.set_calibration(media - media_total)
         print(media - media_total)
 
 
 class kalman_filter:
     def __init__(self):
+        """Inicializa un objeto de filtro de Kalman."""
 
-        self.kf = None
+        self._kf = None
 
-        self.sensor1 = None
-        self.sensor2 = None
+        self._sensor1 = None
+        self._sensor2 = None
 
-        self.last_update = 0
+        self._last_update = 0
         self._time_start_plot = time.time()
 
     def init_filter(self, A, H, P, Q, R = None):
-        """Inicializa un filtro de Kalman con las matrices especificadas.
-        Args:
-        - A: Matriz de transición de estado (nxn).
-        - H: Matriz de medición (mxn).
-        - P: Matriz de covarianza del estado inicial (nxn).
-        - Q: Matriz de covarianza del proceso (nxn).
-        - R: Matriz de covarianza del ruido de medición (mxm).
-        """    
-        if R is None:
-            R = np.array([[self.sensor1.Get_var(), 0], [0, self.sensor2.Get_var()]])
-        self.kf = KalmanFilter(dim_x=A.shape[0], dim_z=H.shape[0])
+        """
+        Inicializa un filtro de Kalman con las matrices especificadas.
 
-        self.kf.F = A  # Matriz de transición de estado
-        self.kf.H = H  # Matriz de medición
-        self.kf.P = P  # Matriz de covarianza del estado inicial
-        self.kf.Q = Q  # Matriz de covarianza del proceso
-        self.kf.R = R  # Matriz de covarianza del ruido de medición
+        A (numpy.ndarray): Matriz de transición de estado (nxn).
+        H (numpy.ndarray): Matriz de medición (mxn).
+        P (numpy.ndarray): Matriz de covarianza del estado inicial (nxn).
+        Q (numpy.ndarray): Matriz de covarianza del proceso (nxn).
+        R (numpy.ndarray, optional): Matriz de covarianza del ruido de medición (mxm). Si no se especifica, se calcula automáticamente usando las varianzas de los sensores.
+        """
+        if R is None:
+            R = np.array([[self._sensor1.Get_var(), 0], [0, self._sensor2.Get_var()]])
+        self._kf = KalmanFilter(dim_x=A.shape[0], dim_z=H.shape[0])
+
+        self._kf.F = A  # Matriz de transición de estado
+        self._kf.H = H  # Matriz de medición
+        self._kf.P = P  # Matriz de covarianza del estado inicial
+        self._kf.Q = Q  # Matriz de covarianza del proceso
+        self._kf.R = R  # Matriz de covarianza del ruido de medición
 
     def attach_sensors(self,s_ultrasonido : Sensor, s_optico : Sensor):
-        self.sensor1 = s_ultrasonido
-        self.sensor2 = s_optico
-
-    def actualizar_filtro_kalman(self):
-        """
-        Estima la distancia utilizando el filtro de Kalman actualizado con la medición z.
+        """Adjunta los sensores de ultrasonido y óptico al filtro de Kalman.
 
         Args:
-        - kf: Objeto de filtro de Kalman inicializado.
-        - z: Valor de medición (vector de longitud mx1).
+            s_ultrasonido (Sensor): Objeto del sensor de ultrasonido.
+            s_optico (Sensor): Objeto del sensor óptico.
+        """
+
+        self._sensor1 = s_ultrasonido
+        self._sensor2 = s_optico
+
+    def actualizar_filtro_kalman(self):
+        """Estima la distancia utilizando el filtro de Kalman actualizado con las mediciones de los sensores.
 
         Returns:
-        - x: Estado estimado (vector de longitud nx1).
+            list: Lista de listas, donde cada sublista contiene el estado estimado y el tiempo correspondiente.
         """
-        if not self.sensor1 or not self.sensor2 :
+
+        if not self._sensor1 or not self._sensor2 :
             return None
         
         values = []
 
-        values_sensor1 = self.sensor1.get_values(last_time=self.last_update)
-        values_sensor2 = self.sensor2.get_values(last_time=self.last_update)
-        self.last_update = time.time()
+        # Obtengo valores de los sensores a partir de la ultima actualizacion
+        values_sensor1 = self._sensor1.get_values(last_time=self._last_update)
+        values_sensor2 = self._sensor2.get_values(last_time=self._last_update)
+        self._last_update = time.time()
 
-
+        # Verifico que tengan el mismo largo ambos vectores
         max_len = max(len(values_sensor1),len(values_sensor2))
         values_sensor1 = values_sensor1[:max_len]
         values_sensor2 = values_sensor2[:max_len]
+
+        # Actualizo para cada par de valores el resultado del filtro.
         for value_s1, value_s2 in zip(values_sensor1,values_sensor2):
             z = np.array([[value_s1],[value_s2]])
-            self.kf.predict()      # Predicción del siguiente estado
-            self.kf.update(z)      # Actualización con la nueva medición
-            values.append([self.kf.x[0][0],time.time()])
+            self._kf.predict()      # Predicción del siguiente estado
+            self._kf.update(z)      # Actualización con la nueva medición
+            values.append([self._kf.x[0][0],time.time()])
             
-
         return values
     
     def add_plot_kalman(self, fig, ax):
-        """Función para agregar un gráfico actualizable a un eje con datos procesados por una función.
+        """
+        Agrega un gráfico actualizable a una figura de matplotlib con datos procesados por el filtro de Kalman.
 
         Args:
             fig (matplotlib.figure.Figure): Figura de matplotlib donde se agregará el gráfico.
             ax (matplotlib.axes.Axes): Ejes de matplotlib donde se agregará el gráfico.
-            func_procesamiento (function): Función de procesamiento que toma datos crudos y devuelve procesados.
 
         Returns:
             matplotlib.animation.FuncAnimation: Objeto de animación de matplotlib para el gráfico actualizable.
@@ -143,4 +150,7 @@ class kalman_filter:
         return ani
     
     def start_time(self):
+        """
+        Inicializa el tiempo de referencia inicio para la animación del gráfico del filtro de Kalman.
+        """
         self._time_start_plot = time.time()

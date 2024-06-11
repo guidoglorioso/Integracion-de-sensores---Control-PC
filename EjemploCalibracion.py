@@ -1,6 +1,6 @@
 from MedidorRobotObjetc import MedidorRobot
 import matplotlib.pyplot as plt
-from FuncionesSensores import  *
+from ProcessingFunctions import  *
 
 mi_robot = MedidorRobot(_puerto="COM5")
 

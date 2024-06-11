@@ -4,13 +4,17 @@ import SensorObject
 import threading
 import re
 import time
+import csv
+from typing import Optional, Dict,Callable
 
 class Robot:
-    """Objeto dedicado a la interaccion con el sistema "Robot"
+    """
+    Objeto dedicado a la interaccion con el sistema "Robot"
     """    
 
     def __init__(self) -> None:
-        """Inicializacion de objeto.
+        """
+        Inicializacion de objeto.
         """        
         
         ##  Inicializo valores iniciales para comunicacion serie
@@ -20,7 +24,7 @@ class Robot:
         self.serial_connection = False
 
         ## sensores
-        self._sensores = False
+        self._sensores: Optional[Dict[str, SensorObject.Sensor]] = None
 
         ## Seteo por defecto el verbose
         self.verbose = False
@@ -75,13 +79,11 @@ class Robot:
 
     def _write_data(self, data:str):
         """
-        Escribe datos en el puerto serie previamente conectado.\n
-        ver metodo:\n
-        connect()
-
+        Escribe datos en el puerto serie previamente conectado.
+        
         Args:
             data (str): Datos a escribir en el puerto serie.
-        """        
+        """     
         if self.serial_connection and self.serial_connection.is_open:
             try:
                 self.serial_connection.write(data.encode('utf-8'))
@@ -117,7 +119,8 @@ class Robot:
         self._comandos = comandos
 
     def get_commands(self)->dict:
-        """Devuelve la lista de comandos seteados y sus tramas.
+        """
+        Devuelve la lista de comandos seteados y sus tramas.
 
         Returns:
             dict: Lista de comandos y sus tramas
@@ -131,9 +134,9 @@ class Robot:
         El tiempo entre comandos esta determinado por el metodo Set_interval().
 
         Args:
-            comando (str): comando a enviar
-            data (list[int]): parametros que se quieren enviar en el comando (0 a 255)
-
+            comando (str): Comando a enviar.
+            data (l
+            ist[int]): Parámetros que se quieren enviar en el comando (0 a 255).
         """   
         # Control de errores
          
@@ -145,7 +148,7 @@ class Robot:
             self.print_verbose(f"Error: Comando '{comando}' no está definido.")
             return
         
-        #Armo la trama
+        # Armo la trama
         trama = "$"
         trama += self._comandos[comando] ## Agarro la trama correspondiente.
         
@@ -247,12 +250,21 @@ class Robot:
 
         return recibir_trama
     
-
-
     def extraer_valor(self, cadena,comando):
-    # Busca el patrón indicado en una cadena y devuelve todos los numeros enteros que le sigan
+        """
+        Busca el patrón indicado en una cadena y devuelve todos los números enteros que le sigan.
+
+        Args:
+            cadena (str): Cadena de texto donde se buscará el patrón.
+            comando (str): Comando asociado al patrón a buscar.
+
+        Returns:
+            list or None: Lista de números enteros encontrados o None si no se encuentran coincidencias.
+        """
+        # Busca el patrón indicado en una cadena y devuelve todos los numeros enteros que le sigan
         patron = rf'\$\{comando}(\d+)#'
-    # Realiza la búsqueda en la cadena
+        
+        # Realiza la búsqueda en la cadena
         coincidencia = re.findall(patron, cadena)
     
         if coincidencia:
@@ -268,8 +280,9 @@ class Robot:
         """        
         self._flag_thread_sensor = False
 
-    def mannage_Rx(self):
-        """Thread para recibir datos. Para matar este thread usar: _stop_thread_sensor()\n
+    def _mannage_Rx(self):
+        """
+        hread para recibir datos. Para matar este thread usar: _stop_thread_sensor()\n
         Para revivirlo usar start_sensor_log()
         """        
         self._flag_thread_sensor = True
@@ -283,21 +296,98 @@ class Robot:
                 self.print_verbose(f"Dato recibido:{dato_recibido}")
 
     def start_sensor_log(self):
-        """Arranca el proceso de asignacion de datos por serie a los sensores.
+        """
+        Arranca el proceso de asignacion de datos por serie a los sensores.
         """        
-        if self._sensores: 
+        if self._sensores != None: 
             self.Function_recept = self._map_sensor(self._sensores)
             # Crear un hilo para leer datos del puerto serie
-            self.hilo_lectura = threading.Thread(target=self.mannage_Rx, daemon=True)
+            self.hilo_lectura = threading.Thread(target=self._mannage_Rx, daemon=True)
             self.hilo_lectura.start()
         else:
             self.print_verbose("No se agregaron los sensores")
 
     
+    
+    ###########################################################################
+    ## Escritura en archivos CSV.
+    ## Los datos se guardan en la carpeta ./outputs
+    ## Se genera un archivo por cada sensor
+    
+    def _output_csv_sensor(self,sensor : SensorObject.Sensor):
+        """
+        Define la función de callback para escribir los datos del sensor en un archivo CSV.
+
+        Args:
+            sensor (SensorObject.Sensor): Objeto del sensor.
+
+        Returns:
+            function: Función de callback para escribir datos en el archivo CSV.
+        """
+
+        name = "./outputs/" + "CSV_" + sensor._name_sensor + ".txt"
+
+        # Defino la callback de cada sensor para cuando se llena su buff
+        def callback():
+            self._write_to_csv(name, sensor)
+
+        return callback
+    
+    def set_csv_output(self,state : bool = True):
+        """Activa o desactiva la escritura de datos en archivos CSV.
+
+        Args:
+            state (bool, optional): Estado para activar o desactivar la escritura de CSV. Defaults to True.
+        """
+        
+        # Si se quiere desactivar el output de CSV
+        if not state:
+            if self._sensores != None:
+                for _, sensor in self._sensores.items():
+                    sensor.set_callback_buff_full(callback= None)
+            return
+        else:
+            # Si se quiere activar el output de CSV
+            if self._sensores != None: # Verifico que los sensores esten configurados
+                for _, sensor in self._sensores.items():
+                    # Para cada sensor creo su respectiva Callback para que escriban cuando se llena su buff.
+                    sensor.set_callback_buff_full(callback= self._output_csv_sensor(sensor))
+                    
+    def _write_to_csv(self,filename: str, sensor: SensorObject.Sensor):
+        """Escribe los datos del sensor en un archivo CSV.
+
+        Args:
+            filename (str): Nombre del archivo CSV.
+            sensor (SensorObject.Sensor): Objeto del sensor.
+        """
+        
+        # Verificar si el archivo existe y si está vacío para escribir el encabezado
+        try:
+            with open(filename, 'r') as csvfile:
+                has_header = csvfile.readline() != ''
+        except FileNotFoundError:
+            has_header = False
+
+        with open(filename, 'a', newline='') as csvfile:
+            csvwriter = csv.writer(csvfile)
+
+            # Escribir el encabezado si el archivo no tiene
+            if not has_header:
+                csvwriter.writerow(['Timestamp', 'Sensor Data'])
+
+            # Escribir los datos del sensor en el archivo CSV
+            data = sensor.get_values_time()
+
+            for this_data in data:
+                timestamp, sensor_data = this_data[1], this_data[0]
+                csvwriter.writerow([timestamp, sensor_data])
+
+
     ###########################################################################
 
-    def verbose(self,mode = False):
-        """Prender o apagar verbose
+    def verbose(self,mode : bool = False):
+        """
+        Prender o apagar verbose
 
         Args:
             mode (bool, optional): Defaults to False.
@@ -305,7 +395,8 @@ class Robot:
         self.verbose = mode
 
     def print_verbose(self, text):
-        """verbose de funciones
+        """
+        verbose de funciones
 
         Args:
             text (): texto a imprimir

@@ -1,8 +1,6 @@
 from MedidorRobotObjetc import MedidorRobot
-from SensorObject import Sensor
 import matplotlib.pyplot as plt
-import FuncionesSensores
-import matplotlib.animation as animation
+
 
 mi_robot = MedidorRobot(_puerto="COM5")
 
@@ -14,7 +12,7 @@ mi_robot.send_command("RX_MOV_SERVO",[90])
 num_med = []
 
 
-for i in range(30):
+for i in range(20):
 
     num_med.append(i)
 
@@ -44,6 +42,7 @@ plt.ylabel('Distancia (mm)')
 plt.grid(True)
 
 # Gráfico para sensor óptico
+
 plt.subplot(1, 2, 2)
 
 plt.plot(num_med,sensor_opt.get_values(), marker='s', color='r')  
