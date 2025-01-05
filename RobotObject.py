@@ -23,7 +23,7 @@ class Robot:
         self.serial_timeout = 1 # ms
         self.serial_connection = False
 
-        ## sensores
+        ## sensores, Se define el tipo de variable (diccionario con keys: str, values: SensorObject).
         self._sensores: Optional[Dict[str, SensorObject.Sensor]] = None
 
         ## Seteo por defecto el verbose
@@ -32,7 +32,7 @@ class Robot:
         ## Tiempo de demora entre comandos por default y tiempo actual
         self._command_interval = 200 / 1000 # 200ms
         self._last_command_time = time.time()
-
+        self._init_time = self._last_command_time
     ## Funciones conexion serie
 
     def connect(self, puerto : str): 
@@ -135,8 +135,7 @@ class Robot:
 
         Args:
             comando (str): Comando a enviar.
-            data (l
-            ist[int]): Parámetros que se quieren enviar en el comando (0 a 255).
+            data (list[int]): Parámetros que se quieren enviar en el comando (0 a 255).
         """   
         # Control de errores
          
@@ -282,7 +281,7 @@ class Robot:
 
     def _mannage_Rx(self):
         """
-        hread para recibir datos. Para matar este thread usar: _stop_thread_sensor()\n
+        Thread para recibir datos. Para matar este thread usar: _stop_thread_sensor()\n
         Para revivirlo usar start_sensor_log()
         """        
         self._flag_thread_sensor = True
@@ -302,8 +301,8 @@ class Robot:
         if self._sensores != None: 
             self.Function_recept = self._map_sensor(self._sensores)
             # Crear un hilo para leer datos del puerto serie
-            self.hilo_lectura = threading.Thread(target=self._mannage_Rx, daemon=True)
-            self.hilo_lectura.start()
+            self.thread_Rx = threading.Thread(target=self._mannage_Rx, daemon=True)
+            self.thread_Rx.start()
         else:
             self.print_verbose("No se agregaron los sensores")
 
@@ -314,7 +313,7 @@ class Robot:
     ## Los datos se guardan en la carpeta ./outputs
     ## Se genera un archivo por cada sensor
     
-    def _output_csv_sensor(self,sensor : SensorObject.Sensor):
+    def _output_csv_sensor(self,sensor : SensorObject.Sensor,extra_text : str = None):
         """
         Define la función de callback para escribir los datos del sensor en un archivo CSV.
 
@@ -324,8 +323,10 @@ class Robot:
         Returns:
             function: Función de callback para escribir datos en el archivo CSV.
         """
-
-        name = "./outputs/" + "CSV_" + sensor._name_sensor + ".txt"
+        if extra_text != None:
+             name = "./outputs/" + extra_text + "CSV_" + sensor._name_sensor + ".txt"
+        else: 
+            name = "./outputs/" + "CSV_" + sensor._name_sensor + ".txt"
 
         # Defino la callback de cada sensor para cuando se llena su buff
         def callback():
@@ -333,11 +334,12 @@ class Robot:
 
         return callback
     
-    def set_csv_output(self,state : bool = True):
+    def set_csv_output(self,state : bool = True,extra_text : str = None):
         """Activa o desactiva la escritura de datos en archivos CSV.
 
         Args:
             state (bool, optional): Estado para activar o desactivar la escritura de CSV. Defaults to True.
+            extra_text(Str, optional): String extra para agregar al nombre del CSV 
         """
         
         # Si se quiere desactivar el output de CSV
@@ -351,7 +353,7 @@ class Robot:
             if self._sensores != None: # Verifico que los sensores esten configurados
                 for _, sensor in self._sensores.items():
                     # Para cada sensor creo su respectiva Callback para que escriban cuando se llena su buff.
-                    sensor.set_callback_buff_full(callback= self._output_csv_sensor(sensor))
+                    sensor.set_callback_buff_full(callback= self._output_csv_sensor(sensor,extra_text))
                     
     def _write_to_csv(self,filename: str, sensor: SensorObject.Sensor):
         """Escribe los datos del sensor en un archivo CSV.
@@ -373,13 +375,16 @@ class Robot:
 
             # Escribir el encabezado si el archivo no tiene
             if not has_header:
+                csvwriter.writerow(['InitTime'])
+                csvwriter.writerow([self._init_time])
                 csvwriter.writerow(['Timestamp', 'Sensor Data'])
 
             # Escribir los datos del sensor en el archivo CSV
             data = sensor.get_values_time()
 
             for this_data in data:
-                timestamp, sensor_data = this_data[1], this_data[0]
+                # Escribo el momento en el que se recibio (respecto al momento en el que se inicio el objeto), 
+                timestamp, sensor_data = this_data[1] - self._init_time, this_data[0]
                 csvwriter.writerow([timestamp, sensor_data])
 
 

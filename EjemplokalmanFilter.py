@@ -1,5 +1,5 @@
 from MedidorRobotObjetc import MedidorRobot
-from FuncionesSensores import *
+from ProcessingFunctions import *
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -19,7 +19,7 @@ R = np.array([[0.1, 0], [0, 0.1]])
 # Inicializar el objeto filtro de Kalman
 kf = kalman_filter()
 kf.attach_sensors(mi_robot.ultra_sonido,mi_robot.optico)
-kf.init_filter(A, H, P, Q,R)
+kf.init_filter(A, H, P, Q,R,adapt=False)
 
 mi_robot.send_command("RX_MS_SENSOR_ULTRA_SONIDO",[1])
 mi_robot.send_command("RX_MS_SENSOR_OPTICO",[1])
@@ -41,12 +41,15 @@ ani3 = kf.add_plot_kalman(fig, ax3)
 
 ax1.set_title("Medicion Ultrasonido")
 ax2.set_title("Medicion sensor optico")
+ax1.set_ylabel("distancia [mm]")
+ax2.set_ylabel("distancia [mm]")
 ax3.set_title("Medicion Kalman Filter")
 
 # Ajustar el layout para que no haya solapamiento
 plt.tight_layout()
 
 # Mostrar la figura
+
 plt.show()
 
 mi_robot.disconnect()

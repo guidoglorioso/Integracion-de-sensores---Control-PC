@@ -3,6 +3,7 @@ import time
 import numpy as np
 import matplotlib.animation as animation
 from filterpy.kalman import KalmanFilter
+from numpy.linalg import LinAlgError
 
 def calibracion_sensores(Sensores : list[Sensor]):
     """Rutina para calibrar sensores. Se debe colocar el dispositivo quieto con los sensores \n
@@ -34,7 +35,12 @@ class kalman_filter:
         self._last_update = 0
         self._time_start_plot = time.time()
 
-    def init_filter(self, A, H, P, Q, R = None):
+        # Variables filtro adaptativo.
+        self.adapt = False
+        self.innovations = []
+        self.epsilon = 1e-5  # Pequeño valor para regularizar R
+
+    def init_filter(self, A, H, P, Q, R = None,adapt = False):
         """
         Inicializa un filtro de Kalman con las matrices especificadas.
 
@@ -43,9 +49,10 @@ class kalman_filter:
         P (numpy.ndarray): Matriz de covarianza del estado inicial (nxn).
         Q (numpy.ndarray): Matriz de covarianza del proceso (nxn).
         R (numpy.ndarray, optional): Matriz de covarianza del ruido de medición (mxm). Si no se especifica, se calcula automáticamente usando las varianzas de los sensores.
+        adapt : Parametro que indica si el filtro es adaptativo o no. (EN DESARROLLO) 
         """
         if R is None:
-            R = np.array([[self._sensor1.Get_var(), 0], [0, self._sensor2.Get_var()]])
+            R = np.array([[self._sensor1.get_var(), 0], [0, self._sensor2.get_var()]])
         self._kf = KalmanFilter(dim_x=A.shape[0], dim_z=H.shape[0])
 
         self._kf.F = A  # Matriz de transición de estado
@@ -53,6 +60,10 @@ class kalman_filter:
         self._kf.P = P  # Matriz de covarianza del estado inicial
         self._kf.Q = Q  # Matriz de covarianza del proceso
         self._kf.R = R  # Matriz de covarianza del ruido de medición
+
+        ## Configuro si el filtro es adaptativo.
+        self.adapt = adapt
+        
 
     def attach_sensors(self,s_ultrasonido : Sensor, s_optico : Sensor):
         """Adjunta los sensores de ultrasonido y óptico al filtro de Kalman.
@@ -75,26 +86,58 @@ class kalman_filter:
         if not self._sensor1 or not self._sensor2 :
             return None
         
-        values = []
-
+        
         # Obtengo valores de los sensores a partir de la ultima actualizacion
         values_sensor1 = self._sensor1.get_values(last_time=self._last_update)
         values_sensor2 = self._sensor2.get_values(last_time=self._last_update)
         self._last_update = time.time()
 
+        # proceso y devuelvo los valores procesados
+        return self.procesar_datos(values_sensor1,values_sensor2)
+    
+    def adapt_R(self):
+        """Funcion que recalcula R para ser adaptativo. ¡EN DESARROLLO! No funciona muy bien
+        """        
+        R = np.zeros((2,2))
+        self.innovations.append(self._kf.y.flatten()) 
+        #print(self._kf.y)        
+        if len(self.innovations) > 5:  # Ajustar R cada 5 pasos
+           
+            self.innovations = self.innovations[-5:]
+            innovation_matrix = np.array(self.innovations).T  # Transponer para tener innovaciones en columnas
+            
+            try:
+                new_R = np.cov(innovation_matrix)
+                if np.linalg.matrix_rank(new_R) == new_R.shape[0]:
+                    self._kf.R = new_R
+                else:
+                    self._kf.R = new_R + self.epsilon * np.eye(new_R.shape[0])
+            except LinAlgError:
+                self.R += self.epsilon * np.eye(self.R.shape[0])
+
+    def procesar_datos(self, sensor1,sensor2):
+        values = []
         # Verifico que tengan el mismo largo ambos vectores
-        max_len = max(len(values_sensor1),len(values_sensor2))
-        values_sensor1 = values_sensor1[:max_len]
-        values_sensor2 = values_sensor2[:max_len]
+        max_len = max(len(sensor1),len(sensor2))
+        values_sensor1 = sensor1[:max_len]
+        values_sensor2 = sensor2[:max_len]
+
 
         # Actualizo para cada par de valores el resultado del filtro.
         for value_s1, value_s2 in zip(values_sensor1,values_sensor2):
             z = np.array([[value_s1],[value_s2]])
+
             self._kf.predict()      # Predicción del siguiente estado
             self._kf.update(z)      # Actualización con la nueva medición
-            values.append([self._kf.x[0][0],time.time()])
             
+            # Recalculo R en caso de ser adaptativo el filtro 
+            if self.adapt is True:
+                self.adapt_R()
+            
+            values.append([self._kf.x[0][0],time.time()])
+        
         return values
+
     
     def add_plot_kalman(self, fig, ax):
         """
@@ -118,6 +161,7 @@ class kalman_filter:
 
         # Función de actualización para animación
         def update_plot(_):
+            time_to_plot=30
             nonlocal x_data, y_data
             
             data = self.actualizar_filtro_kalman()
@@ -132,20 +176,19 @@ class kalman_filter:
             # Ajusto el grafico y devuelvo el plot
             indice = 0
             for _indice, _valor in enumerate(x_data):
-                if _valor > x_data[-1] - 10:
+                if _valor > x_data[-1] - time_to_plot:
                     indice = _indice
                     break
 
             if x_data and y_data:
                 line.set_data(x_data, y_data)
-                ax.set_xlim(max(0, x_data[-1] - 10), max(10, x_data[-1]))  # Mostrar los últimos 10 segundos
+                ax.set_xlim(max(0, x_data[-1] - time_to_plot), max(10, x_data[-1]))  # Mostrar los últimos 10 segundos
                 ax.set_ylim(min(y_data[indice:]) - 10, max(y_data[indice:]) + 10)  # Ajustar el límite Y dinámicamente
-            
-        
+
             return line,
 
         # Configurar animación
-        ani = animation.FuncAnimation(fig, update_plot, interval=50, blit=True)
+        ani = animation.FuncAnimation(fig, update_plot, interval=50, blit=False)
         
         return ani
     

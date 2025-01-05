@@ -1,62 +1,76 @@
 from MedidorRobotObjetc import MedidorRobot
-from SensorObject import Sensor
+from ProcessingFunctions import *
 import matplotlib.pyplot as plt
-import FuncionesSensores
-import matplotlib.animation as animation
+import threading
 
-mi_robot = MedidorRobot(_puerto="COM5")
+thread_on = 1
 
-mi_robot.set_csv_output() ## Activo la salida CSV de los sensores
+def control_servo():
+    while thread_on:
 
-# Cambio la posicion del servo
-mi_robot.send_command("RX_MOV_SERVO",[90])
+        for angle in range(0,180,5):
+            angle_vect.append(angle)
+            # Cambio la posicion del servo
+            mi_robot.send_command("RX_MOV_SERVO",[angle])
 
-num_med = []
-
-
-for i in range(30):
-
-    num_med.append(i)
-
-    # Pido medicion de sensor ultrasonido    
-    mi_robot.send_command("RX_MS_SENSOR_ULTRA_SONIDO_ONETIME")
-
-    # Pido medicion de sensor optico 
-    mi_robot.send_command("RX_MS_SENSOR_OPTICO_ONETIME")
-
-   
-    print(f"medicion {i}")
-
-sensor_us = mi_robot.get_sensor_ultrasonido()
-sensor_opt = mi_robot.get_sensor_optico()
-
-# Creación de los gráficos
-plt.figure(figsize=(10, 5))
-
-# Gráfico para sensor ultrasonido
-plt.subplot(1, 2, 1)
+        for angle in range(0,180,2)[::-1]:
+            angle_vect.append(angle)
+            # Cambio la posicion del servo
+            mi_robot.send_command("RX_MOV_SERVO",[angle]) 
 
 
-plt.plot(num_med,sensor_us.get_values(), marker='o', color='b')
-plt.title('Medición Sensor Ultrasonido')
-plt.xlabel('Medicion N°')
-plt.ylabel('Distancia (mm)')
-plt.grid(True)
+mi_robot = MedidorRobot(_puerto= "COM5")
 
-# Gráfico para sensor óptico
-plt.subplot(1, 2, 2)
 
-plt.plot(num_med,sensor_opt.get_values(), marker='s', color='r')  
-plt.title('Medición Sensor Óptico')
-plt.xlabel('Medicion N°')
-plt.ylabel('Distancia (mm)')
-plt.grid(True)
+angle_vect = []
+mi_robot.send_command("RX_MS_SENSOR_ULTRA_SONIDO",[1])
+mi_robot.send_command("RX_MS_SENSOR_OPTICO",[1])
 
-# Ajustar el diseño
+# Crear el thread
+thread = threading.Thread(target=control_servo)
+
+# Iniciar el thread
+thread.start()
+
+# Definir las matrices A, H, P, Q, R
+A = np.array([[1]])
+H = np.array([[1], [1]])
+P = np.array([[1]])
+Q = np.array([[0.01]])
+R = np.array([[0.1, 0], [0, 0.1]])
+
+
+# Inicializar el objeto filtro de Kalman
+kf = kalman_filter()
+kf.attach_sensors(mi_robot.ultra_sonido,mi_robot.optico)
+kf.init_filter(A, H, P, Q)
+
+# Crear la figura y los ejes para los subplots
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 6))  # 1 fila, 2 columnas
+
+# Resteo los tiempos de ambos sensores
+mi_robot.ultra_sonido.start_time()
+mi_robot.optico.start_time()
+kf.start_time()
+
+# Iniciar las animaciones para cada sensor
+ani1 = mi_robot.ultra_sonido.add_plot_raw(fig, ax1)
+ani2 = mi_robot.optico.add_plot_raw(fig, ax2)
+
+# Agrego un grafico de datos procesados.
+ani3 = kf.add_plot_kalman(fig, ax3)
+
+ax1.set_title("Medicion Ultrasonido")
+ax2.set_title("Medicion sensor optico")
+ax3.set_title("Medicion Procesada")
+
+# Ajustar el layout para que no haya solapamiento
 plt.tight_layout()
 
-# Mostrar los gráficos
+# Mostrar la figura
 plt.show()
+
+thread_on = 0
 
 mi_robot.disconnect()
 

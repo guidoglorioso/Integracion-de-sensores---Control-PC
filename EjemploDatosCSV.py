@@ -1,10 +1,10 @@
 from MedidorRobotObjetc import MedidorRobot
 import matplotlib.pyplot as plt
-
+import time
 
 mi_robot = MedidorRobot(_puerto="COM5")
 
-mi_robot.set_csv_output() ## Activo la salida CSV de los sensores
+mi_robot.set_csv_output(extra_text="P3") ## Activo la salida CSV de los sensores
 
 # Cambio la posicion del servo
 mi_robot.send_command("RX_MOV_SERVO",[90])

@@ -1,7 +1,7 @@
 from MedidorRobotObjetc import MedidorRobot
 from SensorObject import Sensor
 import matplotlib.pyplot as plt
-import FuncionesSensores
+import ProcessingFunctions
 import matplotlib.animation as animation
 
 mi_robot = MedidorRobot(_puerto="COM5")

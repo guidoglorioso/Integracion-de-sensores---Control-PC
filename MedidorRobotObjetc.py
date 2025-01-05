@@ -5,6 +5,9 @@
 # Dependecias
 from RobotObject import Robot
 from SensorObject import Sensor
+import numpy as np
+from ProcessingFunctions import *
+import matplotlib.pyplot as plt
 
 class MedidorRobot(Robot):
     """
@@ -26,7 +29,7 @@ class MedidorRobot(Robot):
         # Defino sensores y los asigno al objeto robot
         self.ultra_sonido = Sensor(N = 100,name="Sensor_UltraSonido")
         self.optico = Sensor(N = 100,name="Sensor_Optico")
-
+        self.angle = Sensor(N = 1000,name="Angulo_Servomotor")
         self._sensor_init()
         
         # Conecto por serie
@@ -38,6 +41,8 @@ class MedidorRobot(Robot):
         ## Variables propias del proyecto
         self.ultra_sonido.set_var(3.392639090737473)
         self.optico.set_var(9.341605062534653)
+        self.ultra_sonido.set_calibration(-62.0)
+        self.optico.set_calibration(-63.93)
         # Aca se ponen parametros especificos del proyecto, por ejemplo valores de calibracion
         # U otras caracteristicas propias.
     
@@ -64,6 +69,7 @@ class MedidorRobot(Robot):
             "RX_MS_SENSOR_ACELEROMETRO" : "SENAC",
             "RX_MS_SENSOR_GIROSCOPO" : "SENGI",
             "RX_RECORRIDO_SERVO" : "MOVR",
+            "RX_MS_ANGULO": "ANG",
         }
 
         # Asigno los comandos al objeto robot
@@ -76,6 +82,7 @@ class MedidorRobot(Robot):
         sensores = {
             "SENUSD" : self.ultra_sonido,
             "SENOPD" : self.optico,
+            "SENANG" : self.angle,
         }
         
         self.set_sensors(sensores)
@@ -96,3 +103,72 @@ class MedidorRobot(Robot):
         """
 
         return self.optico
+    
+    def get_sensor_angulos(self):
+        """Obtiene el objeto de los angulos.
+
+        Returns:
+            Sensor: Objeto de los angulos.
+        """
+
+        return self.angle
+    
+    def set_kalman_filter(self):
+        # Definir las matrices A, H, P, Q, R
+        A = np.array([[1]])
+        H = np.array([[1], [1]])
+        P = np.array([[1]])
+        Q = np.array([[0.01]])
+        R = np.array([[0.1, 0], [0, 0.1]])
+
+        # Inicializar el objeto filtro de Kalman
+        self.kf = kalman_filter()
+        self.kf.attach_sensors(self.ultra_sonido,self.optico)
+        self.kf.init_filter(A, H, P, Q,R,adapt=False)
+    #def plot_position(self):
+
+    def plot_distance_angle(self):
+        
+        # Configuración del semicírculo (area donde no se puede medir)
+        radio = 60
+        centro_x = 0
+        centro_y = 0
+        max_dist = 500
+        angulos = np.linspace(-np.pi / 2, np.pi / 2, 180)  # De -90 grados a 90 grados
+
+        # Coordenadas del semicírculo
+        x = centro_x + radio * np.cos(angulos)
+        y = centro_y + radio * np.sin(angulos)
+
+        # Tamaño de la figura (ancho, alto) 
+        figsize = (10, 8)
+
+        # Creación de la figura y el eje con el tamaño especificado
+        fig, ax = plt.subplots(subplot_kw={'projection': 'polar'}, figsize=figsize)
+
+        # Gráfico del semicírculo
+        ax.plot(angulos, [radio]*len(angulos), color='blue')
+
+        # Configuración del rango de los ejes
+        ax.set_ylim(0, max_dist)
+
+        # Agregar una grilla circular
+        ax.grid(True)
+        grid = np.linspace(100, max_dist, 10, dtype=int)  # Ajuste de la grilla
+
+        ax.set_rticks(grid)  # Radio de las líneas de la grilla
+
+        # Personalizar las etiquetas de los ejes
+        ax.set_yticklabels(grid)
+        ax.set_xticks(np.linspace(-np.pi / 2, np.pi / 2, 5))
+        ax.set_xticklabels(['-90°', '-45°', '0°', '45°', '90°'])
+
+        # Limitar la visualización a los cuadrantes deseados
+
+        ax.set_theta_direction(1)
+        ax.set_thetamax(90)
+
+        # Título del gráfico
+        plt.title('Mapeo de mediciones')
+
+        return fig,ax

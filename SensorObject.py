@@ -244,6 +244,7 @@ class Sensor:
 
         # Función de actualización para animación
         def update_plot(_):
+            time_to_plot = 30
             nonlocal x_data, y_data
             
             # Datos sin procesar
@@ -266,19 +267,19 @@ class Sensor:
             # Obtengo el indice del ultimo valor que entra en el grafico
             indice = 0
             for _indice, _valor in enumerate(x_data):
-                if _valor > x_data[-1] - 10:
+                if _valor > x_data[-1] - time_to_plot:
                     indice = _indice
                     break
                 
             if x_data and y_data:
                 line.set_data(x_data, y_data)
-                ax.set_xlim(max(0, x_data[-1] - 10), max(10, x_data[-1]))  # Mostrar los últimos 10 segundos
+                ax.set_xlim(max(0, x_data[-1] - time_to_plot), max(time_to_plot, x_data[-1]))  # Mostrar los últimos 10 segundos
                 ax.set_ylim(min(y_data[indice:]) - 10, max(y_data[indice:]) + 10)  # Ajustar el límite Y dinámicamente
-            
+                #ax.set_ylim(40,80)
             return line,
 
         # Configurar animación
-        ani = animation.FuncAnimation(fig, update_plot, interval=50, blit=True)
+        ani = animation.FuncAnimation(fig, update_plot, interval=50, blit=False)
         
         return ani
     
