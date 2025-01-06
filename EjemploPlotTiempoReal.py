@@ -10,7 +10,7 @@ def procesamiento(valor):
     return [this_v + 100 for this_v in valor]
 
 mi_robot = MedidorRobot(_puerto="COM5")
-
+mi_robot.send_command("RX_MOV_SERVO",[90]) 
 mi_robot.send_command("RX_MS_SENSOR_ULTRA_SONIDO",[1])
 mi_robot.send_command("RX_MS_SENSOR_OPTICO",[1])
 

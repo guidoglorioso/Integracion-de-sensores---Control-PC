@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.animation as animation
 from filterpy.kalman import KalmanFilter
 from numpy.linalg import LinAlgError
+import SensorObject
 
 def calibracion_sensores(Sensores : list[Sensor]):
     """Rutina para calibrar sensores. Se debe colocar el dispositivo quieto con los sensores \n
@@ -32,8 +33,9 @@ class kalman_filter:
         self._sensor1 = None
         self._sensor2 = None
 
+        # OUTPUT
+        self.kalman_sensor = SensorObject.Sensor(name = "kalman_filter")
         self._last_update = 0
-        self._time_start_plot = time.time()
 
         # Variables filtro adaptativo.
         self.adapt = False
@@ -76,7 +78,7 @@ class kalman_filter:
         self._sensor1 = s_ultrasonido
         self._sensor2 = s_optico
 
-    def actualizar_filtro_kalman(self):
+    def update_kalman_filter(self):
         """Estima la distancia utilizando el filtro de Kalman actualizado con las mediciones de los sensores.
 
         Returns:
@@ -86,14 +88,12 @@ class kalman_filter:
         if not self._sensor1 or not self._sensor2 :
             return None
         
-        
         # Obtengo valores de los sensores a partir de la ultima actualizacion
-        values_sensor1 = self._sensor1.get_values(last_time=self._last_update)
-        values_sensor2 = self._sensor2.get_values(last_time=self._last_update)
-        self._last_update = time.time()
-
+        values_sensor1 = self._sensor1.get_values(last_time=self.kalman_sensor.get_last_update_time())
+        values_sensor2 = self._sensor2.get_values(last_time=self.kalman_sensor.get_last_update_time())
+        
         # proceso y devuelvo los valores procesados
-        return self.procesar_datos(values_sensor1,values_sensor2)
+        return self.process_data(values_sensor1,values_sensor2)
     
     def adapt_R(self):
         """Funcion que recalcula R para ser adaptativo. ¡EN DESARROLLO! No funciona muy bien
@@ -115,13 +115,12 @@ class kalman_filter:
             except LinAlgError:
                 self.R += self.epsilon * np.eye(self.R.shape[0])
 
-    def procesar_datos(self, sensor1,sensor2):
-        values = []
+    def process_data(self, sensor1,sensor2):
+
         # Verifico que tengan el mismo largo ambos vectores
-        max_len = max(len(sensor1),len(sensor2))
+        max_len = min(len(sensor1),len(sensor2))
         values_sensor1 = sensor1[:max_len]
         values_sensor2 = sensor2[:max_len]
-
 
         # Actualizo para cada par de valores el resultado del filtro.
         for value_s1, value_s2 in zip(values_sensor1,values_sensor2):
@@ -134,9 +133,9 @@ class kalman_filter:
             if self.adapt is True:
                 self.adapt_R()
             
-            values.append([self._kf.x[0][0],time.time()])
+            self.kalman_sensor.queue_insert(self._kf.x[0][0])
         
-        return values
+        return self.kalman_sensor.get_values_time()
 
     
     def add_plot_kalman(self, fig, ax):
@@ -164,12 +163,12 @@ class kalman_filter:
             time_to_plot=30
             nonlocal x_data, y_data
             
-            data = self.actualizar_filtro_kalman()
+            data = self.update_kalman_filter()
             if data is None:
                 return line
             
             for y, x in data:  # Suponiendo que get_values_time devuelve (y, x)
-                x_data.append(x - self._time_start_plot)
+                x_data.append(x - self.kalman_sensor.get_init_time())
                 y_data.append(y)
             
             # Ajustar el gráfico
@@ -196,4 +195,4 @@ class kalman_filter:
         """
         Inicializa el tiempo de referencia inicio para la animación del gráfico del filtro de Kalman.
         """
-        self._time_start_plot = time.time()
+        self.kalman_sensor.start_time()

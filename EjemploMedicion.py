@@ -8,15 +8,9 @@ mi_robot = MedidorRobot(_puerto= "COM5")
 # Definir las matrices A, H, P, Q, R
 import numpy as np
 from ProcessingFunctions import *
-A = np.array([[1]])
-H = np.array([[1], [1]])
-P = np.array([[1]])
-Q = np.array([[0.01]])
-R = np.array([[0.1, 0], [0, 0.1]])
 
-# Inicializar el objeto filtro de Kalman
-kf = kalman_filter()
-kf.init_filter(A, H, P, Q,R)
+# Inicializo kalman
+mi_robot.set_kalman_filter()
 
 angle_vect = []
 for angle in range(0,180,5):
@@ -56,8 +50,9 @@ plt.grid(True)
 
 # Gráfico kalman
 plt.subplot(1, 3, 3)
-valores_kalman = kf.procesar_datos(sensor_us_values,sensor_opt_values)
-valores_kalman = [ valor[0] for valor in valores_kalman ]
+mi_robot.kf.update_kalman_filter()
+valores_kalman = np.array(mi_robot.kf.kalman_sensor.get_values())
+
 plt.plot(angle_vect,valores_kalman, marker='s', color='r')  
 plt.title('Medición Filtro Kalman')
 plt.xlabel('Ángulo (grados)')

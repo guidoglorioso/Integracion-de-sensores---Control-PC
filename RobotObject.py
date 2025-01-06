@@ -4,7 +4,7 @@ import SensorObject
 import threading
 import re
 import time
-import csv
+
 from typing import Optional, Dict,Callable
 
 class Robot:
@@ -32,7 +32,7 @@ class Robot:
         ## Tiempo de demora entre comandos por default y tiempo actual
         self._command_interval = 200 / 1000 # 200ms
         self._last_command_time = time.time()
-        self._init_time = self._last_command_time
+        self._init_time = self._last_command_time # deprecated
     ## Funciones conexion serie
 
     def connect(self, puerto : str): 
@@ -330,7 +330,7 @@ class Robot:
 
         # Defino la callback de cada sensor para cuando se llena su buff
         def callback():
-            self._write_to_csv(name, sensor)
+            sensor.write_to_csv(filename = name)
 
         return callback
     
@@ -355,37 +355,7 @@ class Robot:
                     # Para cada sensor creo su respectiva Callback para que escriban cuando se llena su buff.
                     sensor.set_callback_buff_full(callback= self._output_csv_sensor(sensor,extra_text))
                     
-    def _write_to_csv(self,filename: str, sensor: SensorObject.Sensor):
-        """Escribe los datos del sensor en un archivo CSV.
-
-        Args:
-            filename (str): Nombre del archivo CSV.
-            sensor (SensorObject.Sensor): Objeto del sensor.
-        """
-        
-        # Verificar si el archivo existe y si está vacío para escribir el encabezado
-        try:
-            with open(filename, 'r') as csvfile:
-                has_header = csvfile.readline() != ''
-        except FileNotFoundError:
-            has_header = False
-
-        with open(filename, 'a', newline='') as csvfile:
-            csvwriter = csv.writer(csvfile)
-
-            # Escribir el encabezado si el archivo no tiene
-            if not has_header:
-                csvwriter.writerow(['InitTime'])
-                csvwriter.writerow([self._init_time])
-                csvwriter.writerow(['Timestamp', 'Sensor Data'])
-
-            # Escribir los datos del sensor en el archivo CSV
-            data = sensor.get_values_time()
-
-            for this_data in data:
-                # Escribo el momento en el que se recibio (respecto al momento en el que se inicio el objeto), 
-                timestamp, sensor_data = this_data[1] - self._init_time, this_data[0]
-                csvwriter.writerow([timestamp, sensor_data])
+  
 
 
     ###########################################################################

@@ -32,8 +32,8 @@ for angle in range(45,145,5):
 
 
 ## PLOTEO LAS MEDICIONES OBTENIDAS EN FUNCION DEL ANGULO
-distancias = mi_robot.kf.actualizar_filtro_kalman()
-distancias_mediciones = np.array([this_dist[0] for this_dist in distancias ])
+mi_robot.kf.update_kalman_filter()
+distancias_mediciones = np.array(mi_robot.kf.kalman_sensor.get_values())
 angulos_mediciones = np.array(mi_robot.get_sensor_angulos().get_values())
 
 mi_robot.plot_distance_angle()

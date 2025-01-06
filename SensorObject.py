@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.animation as animation
 import time
 from typing import Callable, Optional
+import csv
 
 class Sensor:
     def __init__(self, N = 100,name : str = "sensor"):
@@ -23,7 +24,8 @@ class Sensor:
         self._var = 0        # Varianza
 
         # Tiempo cero para la adquisicion de datos. Las muestras se referencian a este tiempo
-        self._time_start_plot = time.time()
+        self._init_time = time.time()
+        self._last_update = None
 
         # Callback de buffer lleno. Cuando se reciben N datos nuevos esta funcion es invocada.
         self._callback_buff_full = None
@@ -62,7 +64,9 @@ class Sensor:
         if self._queue.count == self._queue.maxlen:
             self._queue.popleft()
 
-        self._queue.append([valor,time.time()])
+        self._last_update = time.time()
+
+        self._queue.append([valor - self._ErrortipoA,self._last_update])
 
     def set_callback_buff_full(self, callback: Optional[Callable] = None):
         """Funcion que setea la callback de buffer lleno y activa o desactiva su invocacion. \n
@@ -112,9 +116,9 @@ class Sensor:
         """
         # Convertimos la deque a una lista para obtener todos sus valores
         if last_time != None:
-                return [(valor[0]  - self._ErrortipoA) for valor in list(self._queue) if valor[1] > last_time]
+                return [valor[0]  for valor in list(self._queue) if valor[1] > last_time]
    
-        return [(valor[0]  - self._ErrortipoA) for valor in list(self._queue)]
+        return [valor[0]  for valor in list(self._queue)]
     
     def get_values_time(self,last_time = None):
         """
@@ -128,10 +132,10 @@ class Sensor:
         """
 
         if last_time != None:
-            return [[(valor[0]  - self._ErrortipoA),valor[1]] for valor in list(self._queue) if valor[1] > last_time]
+            return [[valor[0],valor[1]] for valor in list(self._queue) if valor[1] > last_time]
    
         # Convierto la deque a una lista para obtener todos sus valores y sus tiempos
-        return [[(valor[0]  - self._ErrortipoA),valor[1]] for valor in list(self._queue)]
+        return [[valor[0],valor[1]] for valor in list(self._queue)]
     
     def queue_clear(self):
         """Limpia la cola."""
@@ -213,11 +217,26 @@ class Sensor:
         """        
         self._var = var
 
+    def get_last_update_time(self):
+        """Devuelve el tiempo de la ultima actualizacion. En caso de nunca haber cargado nada se devuelte none
+
+        Returns:
+            time: tiempo de ultima actualizacion
+        """
+        return self._last_update
+    
+    def get_init_time(self):
+        """Devuelve el tiempo de la inicializacion. 
+
+        Returns:
+            time: tiempo de la inicializacion
+        """
+        return self._init_time
     ## Metodos para plotear en tiempo real los datos del sensor
 
     def start_time(self):
         """Inicializa el tiempo de referencia de inicio para la adquisición de datos."""
-        self._time_start_plot = time.time()
+        self._init_time = time.time()
         
         
     def add_plot(self, fig, ax, func_procesamiento):
@@ -250,11 +269,11 @@ class Sensor:
             # Datos sin procesar
             data_raw = []
             # Tiempo de la ultima medicion
-            last_t = x_data[-1] + self._time_start_plot 
+            last_t = x_data[-1] + self._init_time 
             
             # Tomo los valores medidos a partir de un cierto tiempo
             for y, x in self.get_values_time(last_time=last_t):  
-                x_data.append(x - self._time_start_plot)
+                x_data.append(x - self._init_time)
                 data_raw.append(y)
             
             # Procesar los datos utilizando la función de procesamiento
@@ -295,3 +314,34 @@ class Sensor:
             return value
         return self.add_plot(fig, ax,buff)
         
+    def write_to_csv(self,filename: str):
+        """Escribe los datos del sensor en un archivo CSV.
+
+        Args:
+            filename (str): Nombre del archivo CSV.
+            sensor (SensorObject.Sensor): Objeto del sensor.
+        """
+        
+        # Verificar si el archivo existe y si está vacío para escribir el encabezado
+        try:
+            with open(filename, 'r') as csvfile:
+                has_header = csvfile.readline() != ''
+        except FileNotFoundError:
+            has_header = False
+
+        with open(filename, 'a', newline='') as csvfile:
+            csvwriter = csv.writer(csvfile)
+
+            # Escribir el encabezado si el archivo no tiene
+            if not has_header:
+                csvwriter.writerow(['InitTime'])
+                csvwriter.writerow([self._init_time])
+                csvwriter.writerow(['Timestamp', 'Sensor Data'])
+
+            # Escribir los datos del sensor en el archivo CSV
+            data = self.get_values_time()
+
+            for this_data in data:
+                # Escribo el momento en el que se recibio (respecto al momento en el que se inicio el objeto), 
+                timestamp, sensor_data = this_data[1] - self._init_time, this_data[0]
+                csvwriter.writerow([timestamp, sensor_data])

@@ -134,3 +134,6 @@ __pypackages__
 
 # Pyre type checker
 .pyre
+
+# Archivos de pruebas
+Pruebas*
