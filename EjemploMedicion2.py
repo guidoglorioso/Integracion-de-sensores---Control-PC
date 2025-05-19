@@ -1,10 +1,10 @@
-from MedidorRobotObjetc import MedidorRobot
-from SensorObject import Sensor
+from TorretaMedicion import TorretaMedicion
+from Sensor import sensor
 import matplotlib.pyplot as plt
-import ProcessingFunctions
+import FuncionesProcesamiento
 import matplotlib.animation as animation
 
-mi_robot = MedidorRobot(_puerto="COM5")
+mi_robot = TorretaMedicion(_puerto="COM5")
 
 # Cambio la posicion del servo
 mi_robot.send_command("RX_MOV_SERVO",[90])

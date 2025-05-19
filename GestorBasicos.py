@@ -1,15 +1,15 @@
 # Dependecias
 import serial
-import SensorObject 
+import Sensor 
 import threading
 import re
 import time
 
 from typing import Optional, Dict,Callable
 
-class Robot:
+class GestorBasicos:
     """
-    Objeto dedicado a la interaccion con el sistema "Robot"
+    Objeto dedicado a la interaccion con el sistema embebido
     """    
 
     def __init__(self) -> None:
@@ -24,13 +24,13 @@ class Robot:
         self.serial_connection = False
 
         ## sensores, Se define el tipo de variable (diccionario con keys: str, values: SensorObject).
-        self._sensores: Optional[Dict[str, SensorObject.Sensor]] = None
+        self._sensores: Optional[Dict[str, Sensor.sensor]] = None
 
         ## Seteo por defecto el verbose
         self.verbose = False
 
         ## Tiempo de demora entre comandos por default y tiempo actual
-        self._command_interval = 200 / 1000 # 200ms
+        self._command_interval = 30 / 1000 # 10ms
         self._last_command_time = time.time()
         self._init_time = self._last_command_time # deprecated
     ## Funciones conexion serie
@@ -216,7 +216,7 @@ class Robot:
 
         # Verificar si los valores del diccionario son instancias de la clase Sensor
         for comando, sensor in mapeo_comandos.items():
-            if not isinstance(sensor, SensorObject.Sensor):
+            if not isinstance(sensor, Sensor.sensor):
                 self.print_verbose(f"Error: El valor asociado al comando '{comando}' no es una instancia de la clase Sensor.")
                 return
         self._sensores = mapeo_comandos
@@ -313,7 +313,7 @@ class Robot:
     ## Los datos se guardan en la carpeta ./outputs
     ## Se genera un archivo por cada sensor
     
-    def _output_csv_sensor(self,sensor : SensorObject.Sensor,extra_text : str = None):
+    def _output_csv_sensor(self,sensor : Sensor.sensor,extra_text : str = None):
         """
         Define la función de callback para escribir los datos del sensor en un archivo CSV.
 

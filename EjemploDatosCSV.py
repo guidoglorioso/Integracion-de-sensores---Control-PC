@@ -1,14 +1,16 @@
-from MedidorRobotObjetc import MedidorRobot
+from TorretaMedicion import TorretaMedicion
 import matplotlib.pyplot as plt
 import time
 
-mi_robot = MedidorRobot(_puerto="COM5")
+mi_robot = TorretaMedicion(_puerto="COM5")
 
 mi_robot.set_csv_output(extra_text="P1_") ## Activo la salida CSV de los sensores
 
 # Cambio la posicion del servo
 mi_robot.send_command("RX_MOV_SERVO",[90])
 
+
+time.sleep(1)
 num_med = []
 
 

@@ -5,7 +5,7 @@ import time
 from typing import Callable, Optional
 import csv
 
-class Sensor:
+class sensor:
     def __init__(self, N = 100,name : str = "sensor"):
         """
         Inicializa un objeto Sensor.
@@ -298,7 +298,7 @@ class Sensor:
             return line,
 
         # Configurar animación
-        ani = animation.FuncAnimation(fig, update_plot, interval=50, blit=False)
+        ani = animation.FuncAnimation(fig, update_plot, interval=20, blit=False)
         
         return ani
     

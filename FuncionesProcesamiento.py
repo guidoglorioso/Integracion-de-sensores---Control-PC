@@ -1,12 +1,12 @@
-from SensorObject import Sensor
+from Sensor import sensor
 import time
 import numpy as np
 import matplotlib.animation as animation
 from filterpy.kalman import KalmanFilter
 from numpy.linalg import LinAlgError
-import SensorObject
 
-def calibracion_sensores(Sensores : list[Sensor]):
+
+def calibracion_sensores(Sensores : list[sensor]):
     """Rutina para calibrar sensores. Se debe colocar el dispositivo quieto con los sensores \n
     estables. La rutina de calibracion tomará un numero de mediciones de ambos sensores y fijara
     su parametro "calibracion".
@@ -34,15 +34,10 @@ class kalman_filter:
         self._sensor2 = None
 
         # OUTPUT
-        self.kalman_sensor = SensorObject.Sensor(name = "kalman_filter")
+        self.kalman_sensor = sensor(name = "kalman_filter")
         self._last_update = 0
 
-        # Variables filtro adaptativo.
-        self.adapt = False
-        self.innovations = []
-        self.epsilon = 1e-5  # Pequeño valor para regularizar R
-
-    def init_filter(self, A, H, P, Q, R = None,adapt = False):
+    def init_filter(self, A, H, P, Q, R = None):
         """
         Inicializa un filtro de Kalman con las matrices especificadas.
 
@@ -51,10 +46,10 @@ class kalman_filter:
         P (numpy.ndarray): Matriz de covarianza del estado inicial (nxn).
         Q (numpy.ndarray): Matriz de covarianza del proceso (nxn).
         R (numpy.ndarray, optional): Matriz de covarianza del ruido de medición (mxm). Si no se especifica, se calcula automáticamente usando las varianzas de los sensores.
-        adapt : Parametro que indica si el filtro es adaptativo o no. (EN DESARROLLO) 
         """
         if R is None:
             R = np.array([[self._sensor1.get_var(), 0], [0, self._sensor2.get_var()]])
+       
         self._kf = KalmanFilter(dim_x=A.shape[0], dim_z=H.shape[0])
 
         self._kf.F = A  # Matriz de transición de estado
@@ -63,11 +58,9 @@ class kalman_filter:
         self._kf.Q = Q  # Matriz de covarianza del proceso
         self._kf.R = R  # Matriz de covarianza del ruido de medición
 
-        ## Configuro si el filtro es adaptativo.
-        self.adapt = adapt
         
 
-    def attach_sensors(self,s_ultrasonido : Sensor, s_optico : Sensor):
+    def attach_sensors(self,s_ultrasonido : sensor, s_optico : sensor):
         """Adjunta los sensores de ultrasonido y óptico al filtro de Kalman.
 
         Args:
@@ -95,26 +88,6 @@ class kalman_filter:
         # proceso y devuelvo los valores procesados
         return self.process_data(values_sensor1,values_sensor2)
     
-    def adapt_R(self):
-        """Funcion que recalcula R para ser adaptativo. ¡EN DESARROLLO! No funciona muy bien
-        """        
-        R = np.zeros((2,2))
-        self.innovations.append(self._kf.y.flatten()) 
-        #print(self._kf.y)        
-        if len(self.innovations) > 5:  # Ajustar R cada 5 pasos
-           
-            self.innovations = self.innovations[-5:]
-            innovation_matrix = np.array(self.innovations).T  # Transponer para tener innovaciones en columnas
-            
-            try:
-                new_R = np.cov(innovation_matrix)
-                if np.linalg.matrix_rank(new_R) == new_R.shape[0]:
-                    self._kf.R = new_R
-                else:
-                    self._kf.R = new_R + self.epsilon * np.eye(new_R.shape[0])
-            except LinAlgError:
-                self.R += self.epsilon * np.eye(self.R.shape[0])
-
     def process_data(self, sensor1,sensor2):
 
         # Verifico que tengan el mismo largo ambos vectores
@@ -128,10 +101,6 @@ class kalman_filter:
 
             self._kf.predict()      # Predicción del siguiente estado
             self._kf.update(z)      # Actualización con la nueva medición
-            
-            # Recalculo R en caso de ser adaptativo el filtro 
-            if self.adapt is True:
-                self.adapt_R()
             
             self.kalman_sensor.queue_insert(self._kf.x[0][0])
         

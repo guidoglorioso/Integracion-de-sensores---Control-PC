@@ -3,16 +3,16 @@
 # y sensor de acelerometro y giroscopo para posicion.
 
 # Dependecias
-from RobotObject import Robot
-from SensorObject import Sensor
+from GestorBasicos import GestorBasicos
+from Sensor import sensor
 import numpy as np
-from ProcessingFunctions import *
+from FuncionesProcesamiento import *
 import matplotlib.pyplot as plt
 
-class MedidorRobot(Robot):
+class TorretaMedicion(GestorBasicos):
     """
     Objeto dedicado a la interaccion con el proyecto de robot medidor de distancias.
-    Hereda de la clase robot los metodos para usar
+    Hereda de la clase GestorBasicos los metodos para usar
     """    
     def __init__(self,_puerto) -> None:
         """Inicialización de objeto para interacción con proyecto.
@@ -27,12 +27,13 @@ class MedidorRobot(Robot):
         self._command_init()
 
         # Defino sensores y los asigno al objeto robot
-        self.ultra_sonido = Sensor(N = 100,name="Sensor_UltraSonido")
-        self.optico = Sensor(N = 100,name="Sensor_Optico")
-        self.angle = Sensor(N = 1000,name="Angulo_Servomotor")
+        self.ultra_sonido = sensor(N = 100,name="Sensor_UltraSonido")
+        self.optico = sensor(N = 100,name="Sensor_Optico")
+        self.angle = sensor(N = 100,name="Angulo_Servomotor")
         self._sensor_init()
         
         # Conecto por serie
+        self.Set_interval(interval=30) # 30ms de update
         self.connect(puerto=_puerto)
 
         # Inicializo la adquisicion de datos de sensores a los objetos "Sensor"
@@ -52,6 +53,7 @@ class MedidorRobot(Robot):
         """
         self.ultra_sonido.force_callback_buff_full()
         self.optico.force_callback_buff_full()
+        self.angle.force_callback_buff_full()
         super().disconnect()
 
     def _command_init(self):
@@ -63,12 +65,10 @@ class MedidorRobot(Robot):
             "RX_MS_SENSOR_ULTRA_SONIDO_ONETIME" : "SENUS1",
             "RX_MS_SENSOR_OPTICO_ONETIME" : "SENOP1",
             "RX_MOV_SERVO" : "MOV1",
-            "RX_RECORRIDO_SERVO" : "MOVR",
-            "RX_MS_SENSOR_ULTRA_SONIDO" : "SENUS",
-            "RX_MS_SENSOR_OPTICO" : "SENOP",
+            "RX_MS_SENSOR_ULTRA_SONIDO_REGULAR" : "SENUS",
+            "RX_MS_SENSOR_OPTICO_REGULAR" : "SENOP",
             "RX_MS_SENSOR_ACELEROMETRO" : "SENAC",
             "RX_MS_SENSOR_GIROSCOPO" : "SENGI",
-            "RX_RECORRIDO_SERVO" : "MOVR",
             "RX_MS_ANGULO": "ANG",
         }
 
@@ -124,8 +124,7 @@ class MedidorRobot(Robot):
         # Inicializar el objeto filtro de Kalman
         self.kf = kalman_filter()
         self.kf.attach_sensors(self.ultra_sonido,self.optico)
-        self.kf.init_filter(A, H, P, Q,R,adapt=False)
-    #def plot_position(self):
+        self.kf.init_filter(A, H, P, Q,R)
 
     def plot_distance_angle(self):
         

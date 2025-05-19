@@ -1,8 +1,8 @@
-from MedidorRobotObjetc import MedidorRobot
+from TorretaMedicion import TorretaMedicion
 import matplotlib.pyplot as plt
-from ProcessingFunctions import  *
+from FuncionesProcesamiento import  *
 
-mi_robot = MedidorRobot(_puerto="COM5")
+mi_robot = TorretaMedicion(_puerto="COM5")
 
 # Cambio la posicion del servo
 mi_robot.send_command("RX_MOV_SERVO",[90]) 

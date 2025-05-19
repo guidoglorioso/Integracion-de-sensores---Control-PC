@@ -1,13 +1,13 @@
-from MedidorRobotObjetc import MedidorRobot
-from SensorObject import Sensor
+from TorretaMedicion import TorretaMedicion
+from Sensor import sensor
 import matplotlib.pyplot as plt
 
-mi_robot = MedidorRobot(_puerto= "COM5")
+mi_robot = TorretaMedicion(_puerto= "COM5")
 
 
 # Definir las matrices A, H, P, Q, R
 import numpy as np
-from ProcessingFunctions import *
+from FuncionesProcesamiento import *
 
 # Inicializo kalman
 mi_robot.set_kalman_filter()
