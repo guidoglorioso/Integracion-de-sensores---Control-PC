@@ -10,7 +10,7 @@ import numpy as np
 historial = []
 
 def procesamiento(lista):
-    """Calcula la media móvil con ventana de 3, manteniendo valores previos."""
+    """Calcula la media móvil con ventana de 3, mnteniendo valores previos."""
     global historial  # Usamos una variable global para almacenar los datos previos
 
     try:

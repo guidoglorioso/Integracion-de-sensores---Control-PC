@@ -340,7 +340,7 @@ class sensor:
 
             # Escribir los datos del sensor en el archivo CSV
             data = self.get_values_time()
-
+            
             for this_data in data:
                 # Escribo el momento en el que se recibio (respecto al momento en el que se inicio el objeto), 
                 timestamp, sensor_data = this_data[1] - self._init_time, this_data[0]

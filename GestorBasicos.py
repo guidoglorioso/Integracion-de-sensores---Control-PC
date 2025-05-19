@@ -245,8 +245,7 @@ class GestorBasicos:
                     apariciones = self.extraer_valor(trama,comando)
                     if apariciones != None:
                         for aparicion in apariciones:
-                            objeto.queue_insert(aparicion)
-
+                            objeto.queue_insert(aparicion) # En caso de que CSV este activo, se guardan los datos y luego se vacia el queue para no perder valores.
         return recibir_trama
     
     def extraer_valor(self, cadena,comando):
@@ -259,16 +258,19 @@ class GestorBasicos:
 
         Returns:
             list or None: Lista de números enteros encontrados o None si no se encuentran coincidencias.
-        """
+        """      
+       
         # Busca el patrón indicado en una cadena y devuelve todos los numeros enteros que le sigan
-        patron = rf'\$\{comando}(\d+)#'
+        # Cadena a buscar: "$COMMAND-123-456-789-5#"
+        patron =  r"\$(\w+)-(\d+(?:-\d+)*)#"
         
         # Realiza la búsqueda en la cadena
-        coincidencia = re.findall(patron, cadena)
-    
+        coincidencia = re.match(patron, cadena)
+
         if coincidencia:
             # Devuelve el valor numérico encontrado
-            return [int(this_coincidencia) for this_coincidencia in coincidencia]
+            comando = coincidencia.group(1)
+            return list(map(int, coincidencia.group(2).split('-')))
         else:
             # Si no encuentra coincidencias, devuelve None o un valor predeterminado
             return None
@@ -331,6 +333,7 @@ class GestorBasicos:
         # Defino la callback de cada sensor para cuando se llena su buff
         def callback():
             sensor.write_to_csv(filename = name)
+            sensor.queue_clear() # Limpio el buffer del sensor
 
         return callback
     
