@@ -149,17 +149,13 @@ class GestorBasicos:
         
         # Armo la trama
         trama = "$"
-        trama += self._comandos[comando] ## Agarro la trama correspondiente.
-        
-        # Detecto si hay argumentos para enviar y los concateno
-        if len(data) > 0:
-            trama += "-" 
+        trama += self._comandos[comando] ## Agarro la trama correspondiente.           
 
         for this_data in data:
+            trama += "-" 
             trama += str(this_data)
             
         trama += "#"
-
         # Chequeo que haya pasado el tiempo minimo entre comandos
         current_time = time.time()
         time_since_last_command = current_time - self._last_command_time
@@ -262,6 +258,7 @@ class GestorBasicos:
        
         # Busca el patrón indicado en una cadena y devuelve todos los numeros enteros que le sigan
         # Cadena a buscar: "$COMMAND-123-456-789-5#"
+    
         patron =  r"\$(\w+)-(\d+(?:-\d+)*)#"
         
         # Realiza la búsqueda en la cadena

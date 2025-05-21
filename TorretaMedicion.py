@@ -30,6 +30,7 @@ class TorretaMedicion(GestorBasicos):
         self.ultra_sonido = sensor(N = 100,name="Sensor_UltraSonido")
         self.optico = sensor(N = 100,name="Sensor_Optico")
         self.angle = sensor(N = 100,name="Angulo_Servomotor")
+        self.test = sensor(N = 100,name="Test")
         self._sensor_init()
         
         # Conecto por serie
@@ -70,6 +71,7 @@ class TorretaMedicion(GestorBasicos):
             "RX_MS_SENSOR_ACELEROMETRO" : "SENAC",
             "RX_MS_SENSOR_GIROSCOPO" : "SENGI",
             "RX_MS_ANGULO": "ANG",
+            "RX_TEST" : "TST",
         }
 
         # Asigno los comandos al objeto robot
@@ -83,6 +85,7 @@ class TorretaMedicion(GestorBasicos):
             "SENUSD" : self.ultra_sonido,
             "SENOPD" : self.optico,
             "SENANG" : self.angle,
+            "SENTST" : self.test,
         }
         
         self.set_sensors(sensores)
